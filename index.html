@@ -968,21 +968,44 @@
   .output-canvas-wrap {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    overflow: hidden;
+    overflow: auto;
     background: #EEE9E1;
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 140px;
-    max-height: 300px;
+    max-height: min(72vh, 520px);
     margin-bottom: 14px;
   }
 
-  #output-canvas {
-    max-width: 100%;
-    max-height: 300px;
+  .target-size-hint {
+    margin: 14px 0 4px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    background: rgba(237, 244, 255, 0.45);
+    border: 1px solid rgba(122, 77, 204, 0.14);
+    border-radius: var(--radius-sm);
+  }
+
+  .target-size-hint strong {
+    color: var(--ink);
+  }
+
+  .target-size-note {
     display: block;
-    object-fit: contain;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1.45;
+  }
+
+  #output-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    /* display width/height set in JS so preview size reflects output pixels */
   }
 
   .output-meta {
@@ -1346,6 +1369,12 @@
       </div>
     </div>
 
+    <div class="target-size-hint" id="target-size-hint" hidden>
+      <strong>Estimated output size:</strong>
+      <span id="target-out-w">—</span> × <span id="target-out-h">—</span> px
+      <span class="target-size-note">Updates as you change width and height. Your image stays proportional—it fits inside that box. Tap <strong>Create preview</strong> to render it.</span>
+    </div>
+
     <div class="quality-row">
       <label>Detail</label>
       <input type="range" id="quality-slider" min="50" max="100" value="92" step="1" oninput="updateQuality(this.value)">
@@ -1492,8 +1521,12 @@
   // ── File input ──
   const fileInput = document.getElementById('file-input');
   const dropZone = document.getElementById('drop-zone');
+  const customWInput = document.getElementById('custom-w');
+  const customHInput = document.getElementById('custom-h');
 
   fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+  customWInput.addEventListener('input', refreshTargetDimensionsPreview);
+  customHInput.addEventListener('input', refreshTargetDimensionsPreview);
 
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -1519,10 +1552,53 @@
         setStep(2);
         document.getElementById('card-resize').classList.remove('disabled');
         document.getElementById('card-download').classList.remove('disabled');
+        refreshTargetDimensionsPreview();
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  /** Pixel size after fitting image inside w×h (same math as processImage). */
+  function computeFitDimensions(img, w, h) {
+    const srcRatio = img.width / img.height;
+    const tgtRatio = w / h;
+    let drawW;
+    let drawH;
+    if (srcRatio > tgtRatio) {
+      drawW = w;
+      drawH = Math.round(w / srcRatio);
+    } else {
+      drawH = h;
+      drawW = Math.round(h * srcRatio);
+    }
+    return { drawW, drawH };
+  }
+
+  /** Live readout in Step 2 when width/height change. */
+  function refreshTargetDimensionsPreview() {
+    const hint = document.getElementById('target-size-hint');
+    const wEl = document.getElementById('target-out-w');
+    const hEl = document.getElementById('target-out-h');
+    if (!originalImage || !hint) return;
+    const w = parseInt(customWInput.value, 10);
+    const h = parseInt(customHInput.value, 10);
+    if (!w || !h || w < 1 || h < 1) {
+      hint.hidden = true;
+      return;
+    }
+    const { drawW, drawH } = computeFitDimensions(originalImage, w, h);
+    wEl.textContent = drawW;
+    hEl.textContent = drawH;
+    hint.hidden = false;
+  }
+
+  /** Scale on-screen preview so larger exports look larger (bitmap pixels unchanged). */
+  function applyOutputCanvasDisplayScale(canvasEl, drawW, drawH) {
+    const maxEdge = 400;
+    const scale = Math.min(1, maxEdge / Math.max(drawW, drawH));
+    canvasEl.style.width = Math.round(drawW * scale) + 'px';
+    canvasEl.style.height = Math.round(drawH * scale) + 'px';
   }
 
   // ── Presets ──
@@ -1531,6 +1607,7 @@
     btn.classList.add('selected');
     document.getElementById('custom-w').value = btn.dataset.w;
     document.getElementById('custom-h').value = btn.dataset.h;
+    refreshTargetDimensionsPreview();
   }
 
   // ── Quality slider ──
@@ -1564,22 +1641,12 @@
   // ── Process image ──
   function processImage() {
     if (!originalImage) return;
-    const w = parseInt(document.getElementById('custom-w').value) || originalImage.width;
-    const h = parseInt(document.getElementById('custom-h').value) || originalImage.height;
+    const w = parseInt(document.getElementById('custom-w').value, 10) || originalImage.width;
+    const h = parseInt(document.getElementById('custom-h').value, 10) || originalImage.height;
     const format = document.getElementById('output-format').value;
     const quality = parseInt(document.getElementById('quality-slider').value) / 100;
 
-    // Compute fit-within dimensions (maintain aspect ratio)
-    const srcRatio = originalImage.width / originalImage.height;
-    const tgtRatio = w / h;
-    let drawW, drawH;
-    if (srcRatio > tgtRatio) {
-      drawW = w;
-      drawH = Math.round(w / srcRatio);
-    } else {
-      drawH = h;
-      drawW = Math.round(h * srcRatio);
-    }
+    const { drawW, drawH } = computeFitDimensions(originalImage, w, h);
 
     const canvas = document.getElementById('processing-canvas');
     canvas.width = drawW;
@@ -1608,6 +1675,7 @@
     const outCanvas = document.getElementById('output-canvas');
     outCanvas.width = drawW;
     outCanvas.height = drawH;
+    applyOutputCanvasDisplayScale(outCanvas, drawW, drawH);
     const outCtx = outCanvas.getContext('2d');
     outCtx.drawImage(canvas, 0, 0);
 
@@ -1694,6 +1762,13 @@
     document.getElementById('output-area').classList.remove('visible');
     const sf = document.getElementById('share-fallback');
     if (sf) sf.hidden = true;
+    const tsh = document.getElementById('target-size-hint');
+    if (tsh) tsh.hidden = true;
+    const outCanvas = document.getElementById('output-canvas');
+    if (outCanvas) {
+      outCanvas.style.width = '';
+      outCanvas.style.height = '';
+    }
     document.getElementById('card-resize').classList.add('disabled');
     document.getElementById('card-download').classList.add('disabled');
     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
