@@ -995,23 +995,38 @@
           </select>
         </div>
         <div class="field">
-          <label>Opacity</label>
-          <select id="wm-opacity">
-            <option value="0.2">Subtle (20%)</option>
-            <option value="0.45" selected>Medium (45%)</option>
-            <option value="0.75">Strong (75%)</option>
+          <label>Coverage density</label>
+          <select id="wm-density">
+            <option value="light">Light</option>
+            <option value="medium" selected>Medium</option>
+            <option value="heavy">Heavy</option>
           </select>
         </div>
       </div>
+      <div class="quality-row" style="margin-bottom: 12px;">
+        <label>Transparency</label>
+        <input type="range" id="wm-transparency" min="10" max="85" value="55" step="1" oninput="updateWmTransparency(this.value)">
+        <span class="quality-val" id="wm-transparency-val">55%</span>
+      </div>
+      <div class="field" style="margin-bottom: 12px;">
+        <label>Layout</label>
+        <select id="wm-layout">
+          <option value="single" selected>Single</option>
+          <option value="horizontal">Horizontal line</option>
+          <option value="vertical">Vertical line</option>
+          <option value="repeat">Repeat pattern</option>
+          <option value="corner">Corner to corner</option>
+        </select>
+      </div>
       <div class="field">
-        <label>Position</label>
+        <label>Anchor position</label>
         <div class="wm-position-grid">
           <button class="pos-btn" data-pos="top-left" onclick="selectPos(this)">Top left</button>
           <button class="pos-btn" data-pos="top-center" onclick="selectPos(this)">Top center</button>
           <button class="pos-btn" data-pos="top-right" onclick="selectPos(this)">Top right</button>
           <button class="pos-btn" data-pos="center" onclick="selectPos(this)">Center</button>
-          <button class="pos-btn" data-pos="center-mid" onclick="selectPos(this)"> </button>
-          <button class="pos-btn" data-pos="center-r" onclick="selectPos(this)"> </button>
+          <button class="pos-btn" data-pos="center-left" onclick="selectPos(this)">Center left</button>
+          <button class="pos-btn" data-pos="center-right" onclick="selectPos(this)">Center right</button>
           <button class="pos-btn" data-pos="bottom-left" onclick="selectPos(this)">Bottom left</button>
           <button class="pos-btn" data-pos="bottom-center" onclick="selectPos(this)">Bottom center</button>
           <button class="pos-btn selected" data-pos="bottom-right" onclick="selectPos(this)">Bottom right</button>
@@ -1122,6 +1137,13 @@
   }
   updateQuality(92);
 
+  function updateWmTransparency(val) {
+    document.getElementById('wm-transparency-val').textContent = val + '%';
+    const slider = document.getElementById('wm-transparency');
+    slider.style.setProperty('--pct', val + '%');
+  }
+  updateWmTransparency(55);
+
   // ── Watermark toggle ──
   function toggleWatermark() {
     wmEnabled = !wmEnabled;
@@ -1170,33 +1192,12 @@
       const text = document.getElementById('wm-text').value || '© My Artwork';
       const sizeMap = { small: 0.025, medium: 0.04, large: 0.06 };
       const sizeKey = document.getElementById('wm-size').value;
-      const opacity = parseFloat(document.getElementById('wm-opacity').value);
+      const density = document.getElementById('wm-density').value;
+      const transparency = parseInt(document.getElementById('wm-transparency').value, 10) || 55;
+      const opacity = 1 - (transparency / 100);
+      const layout = document.getElementById('wm-layout').value;
       const fontSize = Math.max(12, Math.round(drawW * sizeMap[sizeKey]));
-
-      ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = fontSize * 0.08;
-      ctx.font = `${fontSize}px Georgia, serif`;
-      ctx.textBaseline = 'middle';
-
-      const textW = ctx.measureText(text).width;
-      const pad = fontSize * 1.2;
-      let tx, ty;
-      const pos = wmPosition;
-
-      if (pos.includes('left')) tx = pad;
-      else if (pos.includes('right')) tx = drawW - textW - pad;
-      else tx = (drawW - textW) / 2;
-
-      if (pos.includes('top')) ty = pad + fontSize / 2;
-      else if (pos.includes('bottom')) ty = drawH - pad;
-      else ty = drawH / 2;
-
-      ctx.strokeText(text, tx, ty);
-      ctx.fillText(text, tx, ty);
-      ctx.restore();
+      drawWatermark(ctx, drawW, drawH, text, fontSize, opacity, wmPosition, layout, density);
     }
 
     // Output to display canvas
@@ -1257,6 +1258,79 @@
       if (i < n) s.classList.add('done');
       else if (i === n) s.classList.add('active');
     }
+  }
+
+  function getWatermarkAnchor(pos, drawW, drawH, textW, pad, fontSize) {
+    let tx;
+    if (pos.includes('left')) tx = pad;
+    else if (pos.includes('right')) tx = drawW - textW - pad;
+    else tx = (drawW - textW) / 2;
+
+    let ty;
+    if (pos.includes('top')) ty = pad + fontSize / 2;
+    else if (pos.includes('bottom')) ty = drawH - pad;
+    else ty = drawH / 2;
+
+    return { tx, ty };
+  }
+
+  function drawWatermark(ctx, drawW, drawH, text, fontSize, opacity, pos, layout, density) {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = Math.max(1, fontSize * 0.08);
+    ctx.font = `${fontSize}px Georgia, serif`;
+    ctx.textBaseline = 'middle';
+
+    const textW = ctx.measureText(text).width;
+    const pad = fontSize * 1.2;
+    const { tx, ty } = getWatermarkAnchor(pos, drawW, drawH, textW, pad, fontSize);
+
+    const drawLabel = (x, y) => {
+      ctx.strokeText(text, x, y);
+      ctx.fillText(text, x, y);
+    };
+
+    const densityScaleMap = { light: 1.45, medium: 1, heavy: 0.72 };
+    const spacingScale = densityScaleMap[density] || 1;
+
+    if (layout === 'single') {
+      drawLabel(tx, ty);
+    } else if (layout === 'horizontal') {
+      const stepX = (textW + fontSize * 1.6) * spacingScale;
+      for (let x = -textW; x <= drawW + textW; x += stepX) {
+        drawLabel(x, ty);
+      }
+    } else if (layout === 'vertical') {
+      const stepY = (fontSize * 2.4) * spacingScale;
+      for (let y = -fontSize; y <= drawH + fontSize; y += stepY) {
+        drawLabel(tx, y);
+      }
+    } else if (layout === 'repeat') {
+      const stepX = (textW + fontSize * 1.5) * spacingScale;
+      const stepY = (fontSize * 2.4) * spacingScale;
+      for (let y = -stepY; y <= drawH + stepY; y += stepY) {
+        const offset = (Math.round(y / stepY) % 2 === 0) ? 0 : stepX / 2;
+        for (let x = -textW + offset; x <= drawW + textW; x += stepX) {
+          drawLabel(x, y);
+        }
+      }
+    } else if (layout === 'corner') {
+      const diagonal = Math.sqrt(drawW * drawW + drawH * drawH);
+      const angle = Math.atan2(drawH, drawW);
+      const stepX = (textW + fontSize * 1.4) * spacingScale;
+      const stepY = (fontSize * 2.6) * spacingScale;
+      ctx.translate(drawW / 2, drawH / 2);
+      ctx.rotate(-angle);
+      for (let y = -diagonal; y <= diagonal; y += stepY) {
+        for (let x = -diagonal; x <= diagonal; x += stepX) {
+          drawLabel(x, y);
+        }
+      }
+    }
+
+    ctx.restore();
   }
 
   // ── Helpers ──
