@@ -662,6 +662,21 @@
     letter-spacing: 0.04em;
   }
 
+  .upload-single-notice {
+    margin-top: 14px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    background: rgba(255, 243, 224, 0.75);
+    border: 1px solid rgba(199, 122, 68, 0.28);
+    border-radius: var(--radius-sm);
+  }
+
+  .upload-single-notice[hidden] {
+    display: none !important;
+  }
+
   /* ─── PREVIEW ─── */
   #preview-area {
     display: none;
@@ -965,6 +980,44 @@
     animation: fadeIn 0.3s ease;
   }
 
+  .output-dim-confirm {
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    background: rgba(237, 244, 255, 0.55);
+    border: 1px solid rgba(122, 77, 204, 0.16);
+    border-radius: var(--radius-sm);
+  }
+
+  .output-dim-confirm .output-dim-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+  }
+
+  .output-dim-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .output-dim-secondary {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  .output-dim-secondary strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
   .output-canvas-wrap {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -1004,8 +1057,7 @@
   #output-canvas {
     display: block;
     max-width: 100%;
-    height: auto;
-    /* display width/height set in JS so preview size reflects output pixels */
+    /* width/height set in JS; avoid height:auto so display matches chosen scale */
   }
 
   .output-meta {
@@ -1284,7 +1336,7 @@
       <span class="step-badge">Step 1</span>
       Bring in your artwork
     </div>
-    <p class="card-subtitle">Start with any artwork image from your phone or computer. Everything stays in your browser, and your original file remains untouched.</p>
+    <p class="card-subtitle">Add <strong>one</strong> artwork image at a time from your phone or computer. Everything stays in your browser, and your original file remains untouched.</p>
 
     <div class="drop-zone" id="drop-zone">
       <input type="file" id="file-input" accept="image/*">
@@ -1292,7 +1344,7 @@
         <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="drop-title">Choose your artwork to begin</div>
-      <div class="drop-hint">Tap to browse your files, or gently drag and drop here</div>
+      <div class="drop-hint">One image at a time — tap to browse or drag and drop here</div>
       <div class="drop-formats">
         <span class="format-pill">JPEG</span>
         <span class="format-pill">PNG</span>
@@ -1300,6 +1352,8 @@
         <span class="format-pill">HEIC</span>
       </div>
     </div>
+
+    <p class="upload-single-notice" id="upload-single-notice" role="status" hidden>Multiple files were selected; only the first image is used. To work on another image later, use Edit another image and upload again.</p>
 
     <div id="preview-area">
       <div class="preview-wrap">
@@ -1464,7 +1518,12 @@
     <div id="output-area">
       <div class="success-banner">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Photo processed successfully
+        Preview ready
+      </div>
+      <div class="output-dim-confirm" id="output-dim-confirm" aria-live="polite">
+        <span class="output-dim-label">This preview image is</span>
+        <div class="output-dim-value" id="preview-dims-main">— × — px</div>
+        <p class="output-dim-secondary" id="preview-dims-context"></p>
       </div>
       <div class="output-canvas-wrap">
         <canvas id="output-canvas"></canvas>
@@ -1524,7 +1583,34 @@
   const customWInput = document.getElementById('custom-w');
   const customHInput = document.getElementById('custom-h');
 
-  fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+  fileInput.multiple = false;
+
+  function pickFirstImageFile(fileList) {
+    if (!fileList || !fileList.length) return null;
+    for (let i = 0; i < fileList.length; i++) {
+      if (fileList[i].type.startsWith('image/')) return fileList[i];
+    }
+    return null;
+  }
+
+  function setUploadMultiNotice(visible) {
+    const el = document.getElementById('upload-single-notice');
+    if (!el) return;
+    el.hidden = !visible;
+  }
+
+  fileInput.addEventListener('change', e => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = pickFirstImageFile(files);
+    if (file) {
+      setUploadMultiNotice(files.length > 1);
+      handleFile(file);
+    } else {
+      setUploadMultiNotice(false);
+    }
+  });
+
   customWInput.addEventListener('input', refreshTargetDimensionsPreview);
   customHInput.addEventListener('input', refreshTargetDimensionsPreview);
 
@@ -1533,8 +1619,15 @@
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) handleFile(file);
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    const file = pickFirstImageFile(files);
+    if (file) {
+      setUploadMultiNotice(files.length > 1);
+      handleFile(file);
+    } else {
+      setUploadMultiNotice(false);
+    }
   });
 
   function handleFile(file) {
@@ -1593,12 +1686,14 @@
     hint.hidden = false;
   }
 
-  /** Scale on-screen preview so larger exports look larger (bitmap pixels unchanged). */
+  /** Fit canvas display inside the same frame as the side-by-side original preview. */
   function applyOutputCanvasDisplayScale(canvasEl, drawW, drawH) {
-    const maxEdge = 400;
-    const scale = Math.min(1, maxEdge / Math.max(drawW, drawH));
+    const maxW = 520;
+    const maxH = 420;
+    const scale = Math.min(maxW / drawW, maxH / drawH, 2.5);
     canvasEl.style.width = Math.round(drawW * scale) + 'px';
     canvasEl.style.height = Math.round(drawH * scale) + 'px';
+    canvasEl.style.maxWidth = '100%';
   }
 
   // ── Presets ──
@@ -1679,15 +1774,27 @@
     const outCtx = outCanvas.getContext('2d');
     outCtx.drawImage(canvas, 0, 0);
 
+    const origW = originalImage.width;
+    const origH = originalImage.height;
+    document.getElementById('preview-dims-main').textContent = `${drawW} × ${drawH} px`;
+    const ctxEl = document.getElementById('preview-dims-context');
+    if (drawW === origW && drawH === origH) {
+      ctxEl.innerHTML = wmEnabled
+        ? `Same pixel size as your upload (<strong>${origW} × ${origH}</strong> px); your signature is applied in this preview.`
+        : `Same pixel size as your upload (<strong>${origW} × ${origH}</strong> px), so it may look identical. Pick a smaller width/height or a preset to shrink the file.`;
+    } else {
+      ctxEl.innerHTML =
+        `Resized from your original <strong>${origW} × ${origH}</strong> px — saved image will be <strong>${drawW} × ${drawH}</strong> px.`;
+    }
+
     // File size estimate
     const dataUrl = canvas.toDataURL(format, quality);
     const estimatedBytes = Math.round((dataUrl.length * 3) / 4);
 
     const meta = document.getElementById('output-meta');
     meta.innerHTML = `
-      <span class="info-chip">Dimensions: <strong>${drawW} × ${drawH} px</strong></span>
       <span class="info-chip">Format: <strong>${format.split('/')[1].toUpperCase()}</strong></span>
-      <span class="info-chip">Est. size: <strong>${formatBytes(estimatedBytes)}</strong></span>
+      <span class="info-chip">Est. file size: <strong>${formatBytes(estimatedBytes)}</strong></span>
     `;
 
     document.getElementById('output-area').classList.add('visible');
@@ -1764,10 +1871,15 @@
     if (sf) sf.hidden = true;
     const tsh = document.getElementById('target-size-hint');
     if (tsh) tsh.hidden = true;
+    const pMain = document.getElementById('preview-dims-main');
+    const pCtx = document.getElementById('preview-dims-context');
+    if (pMain) pMain.textContent = '— × — px';
+    if (pCtx) pCtx.textContent = '';
     const outCanvas = document.getElementById('output-canvas');
     if (outCanvas) {
       outCanvas.style.width = '';
       outCanvas.style.height = '';
+      outCanvas.style.maxWidth = '';
     }
     document.getElementById('card-resize').classList.add('disabled');
     document.getElementById('card-download').classList.add('disabled');
@@ -1775,6 +1887,7 @@
     document.getElementById('custom-w').value = '';
     document.getElementById('custom-h').value = '';
     document.getElementById('file-input').value = '';
+    setUploadMultiNotice(false);
     setStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
