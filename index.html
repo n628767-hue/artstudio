@@ -830,6 +830,38 @@
 
   /* ─── HIDDEN CANVAS ─── */
   #processing-canvas { display: none; }
+
+  /* ─── AVATAR (optional GLB / image) ─── */
+  .welcome-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  @media (min-width: 640px) {
+    .welcome-inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .welcome-text { flex: 1; min-width: 0; }
+  }
+
+  .avatar-host {
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 300px;
+    min-height: 260px;
+    margin: 0 auto;
+    border-radius: var(--radius);
+    border: 1px solid rgba(122, 77, 204, 0.22);
+    background: rgba(255, 255, 255, 0.7);
+    overflow: visible;
+    box-shadow: 0 8px 22px rgba(57, 43, 91, 0.1);
+    position: relative;
+  }
 </style>
 </head>
 <body>
@@ -845,13 +877,25 @@
 <main>
 
   <section class="welcome-panel" aria-label="Welcome message">
-    <p class="welcome-kicker">New here?</p>
-    <h1 class="welcome-title">You are in the right place.</h1>
-    <p class="welcome-copy">If this is your first time resizing artwork online, no worries. We guide you one step at a time and keep your original image untouched.</p>
-    <div class="welcome-points">
-      <p class="welcome-point">1) Bring in your artwork.</p>
-      <p class="welcome-point">2) Pick a canvas size that fits your goal.</p>
-      <p class="welcome-point">3) Preview, then save your polished version.</p>
+    <div class="welcome-inner">
+      <div class="welcome-text">
+        <p class="welcome-kicker">New here?</p>
+        <h1 class="welcome-title">You are in the right place.</h1>
+        <p class="welcome-copy">If this is your first time resizing artwork online, no worries. We guide you one step at a time and keep your original image untouched.</p>
+        <div class="welcome-points">
+          <p class="welcome-point">1) Bring in your artwork.</p>
+          <p class="welcome-point">2) Pick a canvas size that fits your goal.</p>
+          <p class="welcome-point">3) Preview, then save your polished version.</p>
+        </div>
+      </div>
+      <div class="avatar-host eself-host" id="eself-agent" aria-label="Assistant">
+        <script
+          data-client="6931cbcfa5a83eb0fc19898d"
+          data-flow-id="agent-6"
+          src="https://assets.eself.ai/small-agent/prod/bundle.js"
+          data-small-agent="true">
+        </script>
+      </div>
     </div>
   </section>
 
