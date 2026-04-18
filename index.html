@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArtFrame — Photo Resizer for Artists</title>
+<title>ArtFrame — Studio-Friendly Image Prep</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -99,6 +99,53 @@
     max-width: 680px;
     margin: 0 auto;
     padding: 32px 20px 60px;
+  }
+
+  /* ─── WELCOME PANEL ─── */
+  .welcome-panel {
+    background: linear-gradient(145deg, #FFFDF9 0%, #FAF4E8 100%);
+    border: 1px solid var(--gold-light);
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    margin-bottom: 20px;
+  }
+
+  .welcome-kicker {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .welcome-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+
+  .welcome-copy {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+  }
+
+  .welcome-points {
+    display: grid;
+    gap: 8px;
+  }
+
+  .welcome-point {
+    font-size: 13px;
+    color: var(--ink-soft);
+    background: rgba(253, 250, 246, 0.75);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
   }
 
   /* ─── STEP INDICATOR ─── */
@@ -456,6 +503,7 @@
   input[type="range"] {
     flex: 1;
     -webkit-appearance: none;
+    appearance: none;
     height: 4px;
     background: linear-gradient(to right, var(--gold) 0%, var(--gold) var(--pct, 92%), var(--border) var(--pct, 92%));
     border-radius: 2px;
@@ -728,28 +776,39 @@
 <header>
   <div class="logo">
     <span class="logo-mark">Art<em>Frame</em></span>
-    <span class="logo-tagline">Photo Resizer</span>
+    <span class="logo-tagline">Studio Image Prep</span>
   </div>
-  <span class="header-badge">Free · No signup</span>
+  <span class="header-badge">Free · No sign-up · Private</span>
 </header>
 
 <main>
+
+  <section class="welcome-panel" aria-label="Welcome message">
+    <p class="welcome-kicker">New here?</p>
+    <h1 class="welcome-title">You are in the right place.</h1>
+    <p class="welcome-copy">If this is your first time resizing artwork online, no worries. We guide you one step at a time and keep your original image untouched.</p>
+    <div class="welcome-points">
+      <p class="welcome-point">1) Bring in your artwork.</p>
+      <p class="welcome-point">2) Pick a canvas size that fits your goal.</p>
+      <p class="welcome-point">3) Preview, then save your polished version.</p>
+    </div>
+  </section>
 
   <!-- Step indicator -->
   <div class="steps">
     <div class="step active" id="step-1">
       <div class="step-num">1</div>
-      <div class="step-label">Upload</div>
+      <div class="step-label">Bring In</div>
     </div>
     <div class="step-line"></div>
     <div class="step" id="step-2">
       <div class="step-num">2</div>
-      <div class="step-label">Resize</div>
+      <div class="step-label">Shape &amp; Finish</div>
     </div>
     <div class="step-line"></div>
     <div class="step" id="step-3">
       <div class="step-num">3</div>
-      <div class="step-label">Download</div>
+      <div class="step-label">Save</div>
     </div>
   </div>
 
@@ -757,17 +816,17 @@
   <div class="card" id="card-upload">
     <div class="card-title">
       <span class="step-badge">Step 1</span>
-      Choose your photo
+      Bring in your artwork
     </div>
-    <p class="card-subtitle">Tap below to select a photo from your device, or drag one onto this area.</p>
+    <p class="card-subtitle">Start with any artwork image from your phone or computer. Everything stays in your browser, and your original file remains untouched.</p>
 
     <div class="drop-zone" id="drop-zone">
       <input type="file" id="file-input" accept="image/*">
       <div class="drop-icon">
         <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="drop-title">Upload photo</div>
-      <div class="drop-hint">Tap to browse, or drag & drop here</div>
+      <div class="drop-title">Choose your artwork to begin</div>
+      <div class="drop-hint">Tap to browse your files, or gently drag and drop here</div>
       <div class="drop-formats">
         <span class="format-pill">JPEG</span>
         <span class="format-pill">PNG</span>
@@ -792,33 +851,33 @@
   <div class="card disabled" id="card-resize">
     <div class="card-title">
       <span class="step-badge">Step 2</span>
-      Set size &amp; quality
+      Shape and finish your image
     </div>
-    <p class="card-subtitle">Choose a gallery preset or enter your own dimensions. Your photo will be resized without stretching.</p>
+    <p class="card-subtitle">Not sure where to start? Pick a ready-made studio preset, then adjust size and detail until it feels right.</p>
 
     <div class="preset-grid">
       <button class="preset-btn" data-w="3000" data-h="3000" onclick="selectPreset(this)">
-        <span class="preset-name">Gallery standard</span>
+        <span class="preset-name">Square print (gallery)</span>
         <span class="preset-size">3000 × 3000 px</span>
       </button>
       <button class="preset-btn" data-w="2400" data-h="3000" onclick="selectPreset(this)">
-        <span class="preset-name">Portrait</span>
+        <span class="preset-name">Vertical print</span>
         <span class="preset-size">2400 × 3000 px</span>
       </button>
       <button class="preset-btn" data-w="3000" data-h="2400" onclick="selectPreset(this)">
-        <span class="preset-name">Landscape</span>
+        <span class="preset-name">Horizontal print</span>
         <span class="preset-size">3000 × 2400 px</span>
       </button>
       <button class="preset-btn" data-w="1920" data-h="1080" onclick="selectPreset(this)">
-        <span class="preset-name">Web / digital</span>
+        <span class="preset-name">Website / portfolio</span>
         <span class="preset-size">1920 × 1080 px</span>
       </button>
       <button class="preset-btn" data-w="2048" data-h="2048" onclick="selectPreset(this)">
-        <span class="preset-name">Instagram</span>
+        <span class="preset-name">Instagram post</span>
         <span class="preset-size">2048 × 2048 px</span>
       </button>
       <button class="preset-btn" data-w="1200" data-h="1200" onclick="selectPreset(this)">
-        <span class="preset-name">Email / press</span>
+        <span class="preset-name">Email preview</span>
         <span class="preset-size">1200 × 1200 px</span>
       </button>
     </div>
@@ -845,19 +904,19 @@
     </div>
 
     <div class="quality-row">
-      <label>Quality</label>
+      <label>Detail</label>
       <input type="range" id="quality-slider" min="50" max="100" value="92" step="1" oninput="updateQuality(this.value)">
       <span class="quality-val" id="quality-val">92%</span>
     </div>
 
-    <div class="divider-label" style="margin-top: 24px;">watermark</div>
+    <div class="divider-label" style="margin-top: 24px;">signature</div>
 
     <!-- Watermark toggle -->
     <div class="watermark-toggle" onclick="toggleWatermark()">
       <div class="toggle-track" id="wm-toggle">
         <div class="toggle-thumb"></div>
       </div>
-      <span class="toggle-label">Add text watermark</span>
+      <span class="toggle-label">Add a text signature</span>
     </div>
 
     <div id="watermark-options">
@@ -902,7 +961,7 @@
     <div style="margin-top: 24px;">
       <button class="btn-primary" id="process-btn" onclick="processImage()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.728 12.728l.707.707M3 12h1m16 0h1M4.22 19.78l.707-.707M18.95 5.05l-.707.707"/><circle cx="12" cy="12" r="5"/></svg>
-        Process &amp; preview
+        Create preview
       </button>
     </div>
   </div>
@@ -911,9 +970,9 @@
   <div class="card disabled" id="card-download">
     <div class="card-title">
       <span class="step-badge">Step 3</span>
-      Download your photo
+      Save your finished image
     </div>
-    <p class="card-subtitle">Your resized photo is ready. Review the preview, then save it to your device.</p>
+    <p class="card-subtitle">Your updated image appears here when ready. Take a final look, then save it to your device.</p>
 
     <div id="output-area">
       <div class="success-banner">
@@ -927,11 +986,11 @@
       <div class="btn-row">
         <button class="btn-secondary" onclick="resetApp()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          Start over
+          Edit another image
         </button>
         <button class="btn-secondary btn-download" id="download-btn" onclick="downloadImage()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Save photo
+          Save image
         </button>
       </div>
     </div>
