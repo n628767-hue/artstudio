@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArtFrame — Photo Resizer for Artists</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #F7F3EE;
+    --warm-white: #FDFAF6;
+    --ink: #1C1917;
+    --ink-soft: #44403C;
+    --ink-muted: #78716C;
+    --gold: #C9A96E;
+    --gold-light: #E8D5B0;
+    --gold-pale: #F5EDD9;
+    --border: rgba(28,25,23,0.12);
+    --border-light: rgba(28,25,23,0.07);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--warm-white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .logo-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+  }
+
+  .logo-mark em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .logo-tagline {
+    font-size: 11px;
+    font-weight: 300;
+    color: var(--ink-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-badge {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--ink-muted);
+    background: var(--gold-pale);
+    border: 1px solid var(--gold-light);
+    border-radius: 20px;
+    padding: 5px 12px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+
+  /* ─── STEP INDICATOR ─── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--warm-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+
+  .step.active .step-num {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: white;
+  }
+
+  .step.done .step-num {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: white;
+  }
+
+  .step-label {
+    font-size: 12px;
+    color: var(--ink-muted);
+    font-weight: 400;
+    transition: color 0.3s;
+  }
+
+  .step.active .step-label {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin: 0 8px;
+    max-width: 40px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    margin-bottom: 16px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .card.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-title .step-badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--gold);
+    background: var(--gold-pale);
+    border: 1px solid var(--gold-light);
+    border-radius: 10px;
+    padding: 2px 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 22px;
+    line-height: 1.6;
+  }
+
+  /* ─── DROP ZONE ─── */
+  .drop-zone {
+    border: 1.5px dashed var(--gold-light);
+    border-radius: var(--radius);
+    background: var(--gold-pale);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--gold);
+    background: #F2E8D4;
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    background: var(--gold-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drop-icon svg { width: 22px; height: 22px; stroke: var(--gold); fill: none; }
+
+  .drop-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .drop-hint {
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+
+  .drop-formats {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .format-pill {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── PREVIEW ─── */
+  #preview-area {
+    display: none;
+    margin-top: 16px;
+  }
+
+  .preview-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #EEE9E1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    max-height: 320px;
+  }
+
+  .preview-wrap img {
+    max-width: 100%;
+    max-height: 320px;
+    display: block;
+    object-fit: contain;
+  }
+
+  .preview-info {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .info-chip {
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+  }
+
+  .info-chip strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* ─── PRESETS ─── */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  @media (min-width: 480px) {
+    .preset-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .preset-btn {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .preset-btn:hover {
+    border-color: var(--gold);
+    background: var(--gold-pale);
+  }
+
+  .preset-btn.selected {
+    border-color: var(--gold);
+    background: var(--gold-pale);
+    box-shadow: 0 0 0 1px var(--gold);
+  }
+
+  .preset-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 2px;
+    display: block;
+  }
+
+  .preset-size {
+    font-size: 11px;
+    color: var(--ink-muted);
+    display: block;
+  }
+
+  .divider-label {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 16px 0;
+    position: relative;
+  }
+
+  .divider-label::before, .divider-label::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 30px);
+    height: 1px;
+    background: var(--border);
+  }
+  .divider-label::before { left: 0; }
+  .divider-label::after { right: 0; }
+
+  /* ─── CUSTOM SIZE INPUTS ─── */
+  .custom-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .field input, .field select {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--gold);
+  }
+
+  /* ─── QUALITY SLIDER ─── */
+  .quality-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .quality-row label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: linear-gradient(to right, var(--gold) 0%, var(--gold) var(--pct, 92%), var(--border) var(--pct, 92%));
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--warm-white);
+    border: 1.5px solid var(--gold);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+
+  .quality-val {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* ─── WATERMARK ─── */
+  .watermark-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+
+  .toggle-track {
+    width: 40px;
+    height: 22px;
+    background: var(--border);
+    border-radius: 11px;
+    position: relative;
+    transition: background 0.25s;
+    flex-shrink: 0;
+  }
+
+  .toggle-track.on {
+    background: var(--gold);
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.25s;
+  }
+
+  .toggle-track.on .toggle-thumb {
+    transform: translateX(18px);
+  }
+
+  .toggle-label {
+    font-size: 14px;
+    color: var(--ink);
+  }
+
+  #watermark-options {
+    display: none;
+    animation: fadeIn 0.25s ease;
+  }
+
+  #watermark-options.visible {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .wm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .wm-position-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .pos-btn {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 4px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .pos-btn:hover, .pos-btn.selected {
+    border-color: var(--gold);
+    background: var(--gold-pale);
+    color: var(--ink);
+  }
+
+  /* ─── OUTPUT PREVIEW ─── */
+  #output-area {
+    display: none;
+  }
+
+  #output-area.visible {
+    display: block;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .output-canvas-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #EEE9E1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    max-height: 300px;
+    margin-bottom: 14px;
+  }
+
+  #output-canvas {
+    max-width: 100%;
+    max-height: 300px;
+    display: block;
+    object-fit: contain;
+  }
+
+  .output-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  /* ─── BUTTON ─── */
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 16px 24px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    background: var(--ink-soft);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(28,25,23,0.18);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 24px;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--ink);
+    background: var(--cream);
+  }
+
+  .btn-download {
+    background: var(--gold);
+    color: white;
+    border-color: var(--gold);
+  }
+
+  .btn-download:hover {
+    background: #B8904A;
+    border-color: #B8904A;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  @media (min-width: 400px) {
+    .btn-row { flex-direction: row; }
+    .btn-row .btn-secondary, .btn-row .btn-download { flex: 1; }
+  }
+
+  /* ─── SUCCESS STATE ─── */
+  .success-banner {
+    background: #F0F7EE;
+    border: 1px solid #C3DFC0;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #3D6B37;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 24px;
+    font-size: 12px;
+    color: var(--ink-muted);
+    border-top: 1px solid var(--border-light);
+  }
+
+  footer a { color: var(--gold); text-decoration: none; }
+
+  /* ─── HIDDEN CANVAS ─── */
+  #processing-canvas { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">Art<em>Frame</em></span>
+    <span class="logo-tagline">Photo Resizer</span>
+  </div>
+  <span class="header-badge">Free · No signup</span>
+</header>
+
+<main>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="step-1">
+      <div class="step-num">1</div>
+      <div class="step-label">Upload</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step-2">
+      <div class="step-num">2</div>
+      <div class="step-label">Resize</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step-3">
+      <div class="step-num">3</div>
+      <div class="step-label">Download</div>
+    </div>
+  </div>
+
+  <!-- Step 1: Upload -->
+  <div class="card" id="card-upload">
+    <div class="card-title">
+      <span class="step-badge">Step 1</span>
+      Choose your photo
+    </div>
+    <p class="card-subtitle">Tap below to select a photo from your device, or drag one onto this area.</p>
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept="image/*">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="drop-title">Upload photo</div>
+      <div class="drop-hint">Tap to browse, or drag & drop here</div>
+      <div class="drop-formats">
+        <span class="format-pill">JPEG</span>
+        <span class="format-pill">PNG</span>
+        <span class="format-pill">WEBP</span>
+        <span class="format-pill">HEIC</span>
+      </div>
+    </div>
+
+    <div id="preview-area">
+      <div class="preview-wrap">
+        <img id="preview-img" src="" alt="Preview">
+      </div>
+      <div class="preview-info">
+        <span class="info-chip">Size: <strong id="orig-size">—</strong></span>
+        <span class="info-chip">Dimensions: <strong id="orig-dims">—</strong></span>
+        <span class="info-chip">Format: <strong id="orig-format">—</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Resize -->
+  <div class="card disabled" id="card-resize">
+    <div class="card-title">
+      <span class="step-badge">Step 2</span>
+      Set size &amp; quality
+    </div>
+    <p class="card-subtitle">Choose a gallery preset or enter your own dimensions. Your photo will be resized without stretching.</p>
+
+    <div class="preset-grid">
+      <button class="preset-btn" data-w="3000" data-h="3000" onclick="selectPreset(this)">
+        <span class="preset-name">Gallery standard</span>
+        <span class="preset-size">3000 × 3000 px</span>
+      </button>
+      <button class="preset-btn" data-w="2400" data-h="3000" onclick="selectPreset(this)">
+        <span class="preset-name">Portrait</span>
+        <span class="preset-size">2400 × 3000 px</span>
+      </button>
+      <button class="preset-btn" data-w="3000" data-h="2400" onclick="selectPreset(this)">
+        <span class="preset-name">Landscape</span>
+        <span class="preset-size">3000 × 2400 px</span>
+      </button>
+      <button class="preset-btn" data-w="1920" data-h="1080" onclick="selectPreset(this)">
+        <span class="preset-name">Web / digital</span>
+        <span class="preset-size">1920 × 1080 px</span>
+      </button>
+      <button class="preset-btn" data-w="2048" data-h="2048" onclick="selectPreset(this)">
+        <span class="preset-name">Instagram</span>
+        <span class="preset-size">2048 × 2048 px</span>
+      </button>
+      <button class="preset-btn" data-w="1200" data-h="1200" onclick="selectPreset(this)">
+        <span class="preset-name">Email / press</span>
+        <span class="preset-size">1200 × 1200 px</span>
+      </button>
+    </div>
+
+    <div class="divider-label">or custom size</div>
+
+    <div class="custom-row">
+      <div class="field">
+        <label>Width (px)</label>
+        <input type="number" id="custom-w" placeholder="e.g. 2400" min="1" max="10000">
+      </div>
+      <div class="field">
+        <label>Height (px)</label>
+        <input type="number" id="custom-h" placeholder="e.g. 3000" min="1" max="10000">
+      </div>
+      <div class="field">
+        <label>Format</label>
+        <select id="output-format">
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/png">PNG</option>
+          <option value="image/webp">WebP</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="quality-row">
+      <label>Quality</label>
+      <input type="range" id="quality-slider" min="50" max="100" value="92" step="1" oninput="updateQuality(this.value)">
+      <span class="quality-val" id="quality-val">92%</span>
+    </div>
+
+    <div class="divider-label" style="margin-top: 24px;">watermark</div>
+
+    <!-- Watermark toggle -->
+    <div class="watermark-toggle" onclick="toggleWatermark()">
+      <div class="toggle-track" id="wm-toggle">
+        <div class="toggle-thumb"></div>
+      </div>
+      <span class="toggle-label">Add text watermark</span>
+    </div>
+
+    <div id="watermark-options">
+      <div class="field" style="margin-bottom: 12px;">
+        <label>Watermark text</label>
+        <input type="text" id="wm-text" placeholder="e.g. © Jane Smith 2025" value="© My Artwork">
+      </div>
+      <div class="wm-grid">
+        <div class="field">
+          <label>Size</label>
+          <select id="wm-size">
+            <option value="small">Small</option>
+            <option value="medium" selected>Medium</option>
+            <option value="large">Large</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Opacity</label>
+          <select id="wm-opacity">
+            <option value="0.2">Subtle (20%)</option>
+            <option value="0.45" selected>Medium (45%)</option>
+            <option value="0.75">Strong (75%)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Position</label>
+        <div class="wm-position-grid">
+          <button class="pos-btn" data-pos="top-left" onclick="selectPos(this)">Top left</button>
+          <button class="pos-btn" data-pos="top-center" onclick="selectPos(this)">Top center</button>
+          <button class="pos-btn" data-pos="top-right" onclick="selectPos(this)">Top right</button>
+          <button class="pos-btn" data-pos="center" onclick="selectPos(this)">Center</button>
+          <button class="pos-btn" data-pos="center-mid" onclick="selectPos(this)"> </button>
+          <button class="pos-btn" data-pos="center-r" onclick="selectPos(this)"> </button>
+          <button class="pos-btn" data-pos="bottom-left" onclick="selectPos(this)">Bottom left</button>
+          <button class="pos-btn" data-pos="bottom-center" onclick="selectPos(this)">Bottom center</button>
+          <button class="pos-btn selected" data-pos="bottom-right" onclick="selectPos(this)">Bottom right</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 24px;">
+      <button class="btn-primary" id="process-btn" onclick="processImage()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.728 12.728l.707.707M3 12h1m16 0h1M4.22 19.78l.707-.707M18.95 5.05l-.707.707"/><circle cx="12" cy="12" r="5"/></svg>
+        Process &amp; preview
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 3: Download -->
+  <div class="card disabled" id="card-download">
+    <div class="card-title">
+      <span class="step-badge">Step 3</span>
+      Download your photo
+    </div>
+    <p class="card-subtitle">Your resized photo is ready. Review the preview, then save it to your device.</p>
+
+    <div id="output-area">
+      <div class="success-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Photo processed successfully
+      </div>
+      <div class="output-canvas-wrap">
+        <canvas id="output-canvas"></canvas>
+      </div>
+      <div class="output-meta" id="output-meta"></div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="resetApp()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Start over
+        </button>
+        <button class="btn-secondary btn-download" id="download-btn" onclick="downloadImage()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save photo
+        </button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  ArtFrame runs entirely in your browser — your photos never leave your device.
+</footer>
+
+<canvas id="processing-canvas"></canvas>
+
+<script>
+  let originalImage = null;
+  let wmEnabled = false;
+  let wmPosition = 'bottom-right';
+
+  // ── File input ──
+  const fileInput = document.getElementById('file-input');
+  const dropZone = document.getElementById('drop-zone');
+
+  fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFile(file);
+  });
+
+  function handleFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        originalImage = img;
+        document.getElementById('preview-img').src = e.target.result;
+        document.getElementById('preview-area').style.display = 'block';
+        document.getElementById('orig-dims').textContent = img.width + ' × ' + img.height + ' px';
+        document.getElementById('orig-format').textContent = file.type.split('/')[1].toUpperCase();
+        document.getElementById('orig-size').textContent = formatBytes(file.size);
+        setStep(2);
+        document.getElementById('card-resize').classList.remove('disabled');
+        document.getElementById('card-download').classList.remove('disabled');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Presets ──
+  function selectPreset(btn) {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('custom-w').value = btn.dataset.w;
+    document.getElementById('custom-h').value = btn.dataset.h;
+  }
+
+  // ── Quality slider ──
+  function updateQuality(val) {
+    document.getElementById('quality-val').textContent = val + '%';
+    const slider = document.getElementById('quality-slider');
+    slider.style.setProperty('--pct', val + '%');
+  }
+  updateQuality(92);
+
+  // ── Watermark toggle ──
+  function toggleWatermark() {
+    wmEnabled = !wmEnabled;
+    document.getElementById('wm-toggle').classList.toggle('on', wmEnabled);
+    document.getElementById('watermark-options').classList.toggle('visible', wmEnabled);
+  }
+
+  function selectPos(btn) {
+    document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    wmPosition = btn.dataset.pos;
+  }
+
+  // ── Process image ──
+  function processImage() {
+    if (!originalImage) return;
+    const w = parseInt(document.getElementById('custom-w').value) || originalImage.width;
+    const h = parseInt(document.getElementById('custom-h').value) || originalImage.height;
+    const format = document.getElementById('output-format').value;
+    const quality = parseInt(document.getElementById('quality-slider').value) / 100;
+
+    // Compute fit-within dimensions (maintain aspect ratio)
+    const srcRatio = originalImage.width / originalImage.height;
+    const tgtRatio = w / h;
+    let drawW, drawH;
+    if (srcRatio > tgtRatio) {
+      drawW = w;
+      drawH = Math.round(w / srcRatio);
+    } else {
+      drawH = h;
+      drawW = Math.round(h * srcRatio);
+    }
+
+    const canvas = document.getElementById('processing-canvas');
+    canvas.width = drawW;
+    canvas.height = drawH;
+    const ctx = canvas.getContext('2d');
+
+    // High-quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(originalImage, 0, 0, drawW, drawH);
+
+    // Watermark
+    if (wmEnabled) {
+      const text = document.getElementById('wm-text').value || '© My Artwork';
+      const sizeMap = { small: 0.025, medium: 0.04, large: 0.06 };
+      const sizeKey = document.getElementById('wm-size').value;
+      const opacity = parseFloat(document.getElementById('wm-opacity').value);
+      const fontSize = Math.max(12, Math.round(drawW * sizeMap[sizeKey]));
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = fontSize * 0.08;
+      ctx.font = `${fontSize}px Georgia, serif`;
+      ctx.textBaseline = 'middle';
+
+      const textW = ctx.measureText(text).width;
+      const pad = fontSize * 1.2;
+      let tx, ty;
+      const pos = wmPosition;
+
+      if (pos.includes('left')) tx = pad;
+      else if (pos.includes('right')) tx = drawW - textW - pad;
+      else tx = (drawW - textW) / 2;
+
+      if (pos.includes('top')) ty = pad + fontSize / 2;
+      else if (pos.includes('bottom')) ty = drawH - pad;
+      else ty = drawH / 2;
+
+      ctx.strokeText(text, tx, ty);
+      ctx.fillText(text, tx, ty);
+      ctx.restore();
+    }
+
+    // Output to display canvas
+    const outCanvas = document.getElementById('output-canvas');
+    outCanvas.width = drawW;
+    outCanvas.height = drawH;
+    const outCtx = outCanvas.getContext('2d');
+    outCtx.drawImage(canvas, 0, 0);
+
+    // File size estimate
+    const dataUrl = canvas.toDataURL(format, quality);
+    const estimatedBytes = Math.round((dataUrl.length * 3) / 4);
+
+    const meta = document.getElementById('output-meta');
+    meta.innerHTML = `
+      <span class="info-chip">Dimensions: <strong>${drawW} × ${drawH} px</strong></span>
+      <span class="info-chip">Format: <strong>${format.split('/')[1].toUpperCase()}</strong></span>
+      <span class="info-chip">Est. size: <strong>${formatBytes(estimatedBytes)}</strong></span>
+    `;
+
+    document.getElementById('output-area').classList.add('visible');
+    setStep(3);
+    document.getElementById('card-download').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Download ──
+  function downloadImage() {
+    const canvas = document.getElementById('processing-canvas');
+    const format = document.getElementById('output-format').value;
+    const quality = parseInt(document.getElementById('quality-slider').value) / 100;
+    const ext = format === 'image/jpeg' ? 'jpg' : format.split('/')[1];
+    const link = document.createElement('a');
+    link.download = 'artframe-resized.' + ext;
+    link.href = canvas.toDataURL(format, quality);
+    link.click();
+  }
+
+  // ── Reset ──
+  function resetApp() {
+    originalImage = null;
+    document.getElementById('preview-area').style.display = 'none';
+    document.getElementById('output-area').classList.remove('visible');
+    document.getElementById('card-resize').classList.add('disabled');
+    document.getElementById('card-download').classList.add('disabled');
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('custom-w').value = '';
+    document.getElementById('custom-h').value = '';
+    document.getElementById('file-input').value = '';
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Step indicator ──
+  function setStep(n) {
+    for (let i = 1; i <= 3; i++) {
+      const s = document.getElementById('step-' + i);
+      s.classList.remove('active', 'done');
+      if (i < n) s.classList.add('done');
+      else if (i === n) s.classList.add('active');
+    }
+  }
+
+  // ── Helpers ──
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+</script>
+</body>
+</html>
