@@ -981,7 +981,8 @@
   }
 
   .output-dim-confirm {
-    margin-bottom: 12px;
+    margin-top: 14px;
+    margin-bottom: 14px;
     padding: 14px 16px;
     background: rgba(237, 244, 255, 0.55);
     border: 1px solid rgba(122, 77, 204, 0.16);
@@ -1028,7 +1029,6 @@
     justify-content: center;
     min-height: 140px;
     max-height: min(72vh, 520px);
-    margin-bottom: 14px;
   }
 
   .target-size-hint {
@@ -1520,13 +1520,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         Preview ready
       </div>
+      <div class="output-canvas-wrap">
+        <canvas id="output-canvas"></canvas>
+      </div>
       <div class="output-dim-confirm" id="output-dim-confirm" aria-live="polite">
         <span class="output-dim-label">This preview image is</span>
         <div class="output-dim-value" id="preview-dims-main">— × — px</div>
         <p class="output-dim-secondary" id="preview-dims-context"></p>
-      </div>
-      <div class="output-canvas-wrap">
-        <canvas id="output-canvas"></canvas>
       </div>
       <div class="output-meta" id="output-meta"></div>
       <div class="btn-row">
