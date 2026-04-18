@@ -677,6 +677,21 @@
     display: none !important;
   }
 
+  .upload-error {
+    margin-top: 14px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #5c2d2d;
+    background: rgba(255, 232, 232, 0.95);
+    border: 1px solid rgba(180, 80, 80, 0.35);
+    border-radius: var(--radius-sm);
+  }
+
+  .upload-error[hidden] {
+    display: none !important;
+  }
+
   /* ─── PREVIEW ─── */
   #preview-area {
     display: none;
@@ -1354,6 +1369,7 @@
     </div>
 
     <p class="upload-single-notice" id="upload-single-notice" role="status" hidden>Multiple files were selected; only the first image is used. To work on another image later, use Edit another image and upload again.</p>
+    <p class="upload-error" id="upload-error" role="alert" hidden></p>
 
     <div id="preview-area">
       <div class="preview-wrap">
@@ -1585,12 +1601,45 @@
 
   fileInput.multiple = false;
 
+  /** iOS often omits MIME type; fall back on filename. */
+  const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)$/i;
+
+  function isLikelyImageFile(file) {
+    if (!file) return false;
+    if (file.type && file.type.startsWith('image/')) return true;
+    if (file.name && IMAGE_EXT_RE.test(file.name)) return true;
+    return false;
+  }
+
   function pickFirstImageFile(fileList) {
     if (!fileList || !fileList.length) return null;
     for (let i = 0; i < fileList.length; i++) {
-      if (fileList[i].type.startsWith('image/')) return fileList[i];
+      if (isLikelyImageFile(fileList[i])) return fileList[i];
     }
     return null;
+  }
+
+  function formatLabelFromFile(file) {
+    if (file.type && file.type.includes('/')) {
+      const sub = file.type.split('/')[1];
+      if (sub) return sub.replace(/\+/g, ' ').toUpperCase();
+    }
+    const m = /\.([^.]+)$/i.exec(file.name || '');
+    return m ? m[1].toUpperCase() : 'IMAGE';
+  }
+
+  function clearUploadError() {
+    const el = document.getElementById('upload-error');
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = '';
+  }
+
+  function showUploadError(message) {
+    const el = document.getElementById('upload-error');
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = false;
   }
 
   function setUploadMultiNotice(visible) {
@@ -1602,12 +1651,16 @@
   fileInput.addEventListener('change', e => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const file = pickFirstImageFile(files);
+    clearUploadError();
+    let file = pickFirstImageFile(files);
+    /* Photos on iPad sometimes yields no MIME type and no extension — still try the chosen file. */
+    if (!file && files.length === 1) file = files[0];
     if (file) {
       setUploadMultiNotice(files.length > 1);
       handleFile(file);
     } else {
       setUploadMultiNotice(false);
+      showUploadError('Please choose an image file (JPEG, PNG, HEIC, etc.).');
     }
   });
 
@@ -1621,33 +1674,47 @@
     dropZone.classList.remove('dragover');
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
+    clearUploadError();
     const file = pickFirstImageFile(files);
     if (file) {
       setUploadMultiNotice(files.length > 1);
       handleFile(file);
     } else {
       setUploadMultiNotice(false);
+      showUploadError('Please drop an image file (JPEG, PNG, HEIC, etc.).');
     }
   });
 
   function handleFile(file) {
     if (!file) return;
+    clearUploadError();
     const reader = new FileReader();
-    reader.onload = e => {
+    reader.onerror = () => {
+      showUploadError('Could not read this file. If it is from iCloud, wait for it to download, or export a JPEG in Photos and try again.');
+    };
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
       const img = new Image();
       img.onload = () => {
-        originalImage = img;
-        document.getElementById('preview-img').src = e.target.result;
-        document.getElementById('preview-area').style.display = 'block';
-        document.getElementById('orig-dims').textContent = img.width + ' × ' + img.height + ' px';
-        document.getElementById('orig-format').textContent = file.type.split('/')[1].toUpperCase();
-        document.getElementById('orig-size').textContent = formatBytes(file.size);
-        setStep(2);
-        document.getElementById('card-resize').classList.remove('disabled');
-        document.getElementById('card-download').classList.remove('disabled');
-        refreshTargetDimensionsPreview();
+        try {
+          originalImage = img;
+          document.getElementById('preview-img').src = dataUrl;
+          document.getElementById('preview-area').style.display = 'block';
+          document.getElementById('orig-dims').textContent = img.width + ' × ' + img.height + ' px';
+          document.getElementById('orig-format').textContent = formatLabelFromFile(file);
+          document.getElementById('orig-size').textContent = formatBytes(file.size);
+          setStep(2);
+          document.getElementById('card-resize').classList.remove('disabled');
+          document.getElementById('card-download').classList.remove('disabled');
+          refreshTargetDimensionsPreview();
+        } catch (err) {
+          showUploadError('Something went wrong while loading the image. Try exporting as JPEG or PNG and uploading again.');
+        }
       };
-      img.src = e.target.result;
+      img.onerror = () => {
+        showUploadError('This image could not be displayed in the browser. Try opening it in Photos, export as JPEG or PNG, then upload again.');
+      };
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -1888,6 +1955,7 @@
     document.getElementById('custom-h').value = '';
     document.getElementById('file-input').value = '';
     setUploadMultiNotice(false);
+    clearUploadError();
     setStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
